@@ -1,34 +1,27 @@
 package main
 
 import (
-	"github.com/gorilla/websocket"
 	"net/http"
-	"fmt"
+
+	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 )
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 }
+var activeSockets = make(map[int]*websocket.Conn)
 
+func main() {
 
+	r := mux.NewRouter()
 
-func main(){
+	http.Handle("/", r)
+	r.HandleFunc("/ws", socketing)
+	r.HandleFunc("/users/{id}/friends/{friendId}/message", sendMessage).Methods("POST")
 
-	messaging := func (w http.ResponseWriter, r *http.Request) {
-		socket, err := upgrader.Upgrade(w, r, nil)
-		defer socket.Close()
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		
-	}
-
-	http.HandleFunc("/messaging", messaging)
-
-	err := http.ListenAndServe(":3333", nil)
+	err := http.ListenAndServe("127.0.0.1:6969", r)
 	if err != nil {
 		panic(err)
 	}
