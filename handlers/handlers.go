@@ -17,6 +17,7 @@ var wsUpgrader = websocket.Upgrader{
 }
 var activeSockets = make(map[int]*websocket.Conn)
 
+
 func Socketing(w http.ResponseWriter, r *http.Request) {
 	socket, err := wsUpgrader.Upgrade(w, r, nil)
 	defer socket.Close()
@@ -65,10 +66,14 @@ func SendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := data.GetUser(intId)
-	if !user.Friends[intFriendId] {
-		w.WriteHeader(400)
-		w.Write([]byte("Sorry, you can't send a message to a user you're not friends with"))
+	_, err = data.GetUser(intFriendId)
+	if err != nil {
+		if err == fmt.Errorf("no_user") {
+			w.WriteHeader(404)
+			w.Write([]byte("No user is associated with that id"))
+			return
+		}
+		w.WriteHeader(500)
 		return
 	}
 
@@ -93,11 +98,13 @@ func SendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	message := fmt.Sprint("Hey, your friend ",
-		data.GetUser(intId).Firstname,
+	message := fmt.Sprint("Hey, your friend with id ",
+		intId,
 		" just successfully sent a message through a websocket. The following : \n",
 		payload.Message,
 	)
 
 	friendSocket.WriteMessage(1, []byte(message))
+
+
 }
