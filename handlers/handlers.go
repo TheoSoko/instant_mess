@@ -17,7 +17,6 @@ var wsUpgrader = websocket.Upgrader{
 }
 var activeSockets = make(map[int]*websocket.Conn)
 
-
 func Socketing(w http.ResponseWriter, r *http.Request) {
 	socket, err := wsUpgrader.Upgrade(w, r, nil)
 	defer socket.Close()
@@ -26,16 +25,15 @@ func Socketing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := r.URL.Query().Get("id")
-	intId, err := strconv.Atoi(id)
-	if id == "" || err != nil {
+	id, err := strconv.Atoi(r.URL.Query().Get("id"))
+	if err != nil {
 		socket.WriteMessage(5, []byte("You need to provide and integer value ID as a query parameter"))
 		socket.Close()
 		return
 	}
 
-	activeSockets[intId] = socket
-	defer delete(activeSockets, intId)
+	activeSockets[id] = socket
+	defer delete(activeSockets, id)
 
 	for {
 		_, p, err := socket.ReadMessage()
@@ -50,13 +48,8 @@ func Socketing(w http.ResponseWriter, r *http.Request) {
 }
 
 func SendMessage(w http.ResponseWriter, r *http.Request) {
-	id, ok := mux.Vars(r)["id"]
-	friendId, ok2 := mux.Vars(r)["friendId"]
-	if !ok || !ok2 {
-		w.WriteHeader(400)
-		w.Write([]byte("Please, provide the user id and the friend's id in the url"))
-		return
-	}
+	id, _ := mux.Vars(r)["id"]
+	friendId, _ := mux.Vars(r)["friendId"]
 
 	intId, err := strconv.Atoi(id)
 	intFriendId, err2 := strconv.Atoi(friendId)
@@ -86,25 +79,30 @@ func SendMessage(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("A problem occured with the payload"))
 	}
 
-	// ** We would send the message to db here
+	// ** Send the message to db
+	err = data.PostMessage(intId, intFriendId, payload.Message)
+	if err != nil {
+		w.WriteHeader(500)
+	}
 
-	// ** Then, we write from the socket if friend is connected
-
+	// Message has been sent.
 	w.WriteHeader(204)
 
 	friendSocket, ok := activeSockets[intFriendId]
 	if !ok {
-		// ** Send push notification if not connected
+		// ** Send push notification if not connected.
 		return
 	}
 
+	// ** We write to the socket if friend is connected.
 	message := fmt.Sprint("Hey, your friend with id ",
 		intId,
-		" just successfully sent a message through a websocket. The following : \n",
+		" just successfully sent a message through a websocket : \n",
 		payload.Message,
 	)
-
-	friendSocket.WriteMessage(1, []byte(message))
-
-
+	err = friendSocket.WriteMessage(1, []byte(message))
+	if err != nil {
+		// ** Send push notification if websocket fails.
+		return
+	}
 }
