@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/TheoSoko/instant_mess/data"
@@ -13,18 +13,16 @@ import (
 func main() {
 	address := "127.0.0.1"
 	port := "4000"
-	r := mux.NewRouter()
-	data.SqlConnect()
+	data.SqlConn()
 
-	http.Handle("/", r)
+	r := mux.NewRouter()
+	r.Handle("/", r)
 	r.HandleFunc("/ws", handlers.Socketing)
 	r.HandleFunc("/users/{id}/friends/{friendId}/message", handlers.SendMessage).Methods("POST")
 
-	err := http.ListenAndServe(address + ": " + port, r)
+	log.Println("Listening on", address+": "+port)
+	err := http.ListenAndServe(address+": "+port, r)
 	if err != nil {
 		panic(err)
 	}
-
-
-	fmt.Println("Listening on", address + ": " + port)
 }

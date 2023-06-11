@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -19,11 +20,11 @@ var activeSockets = make(map[int]*websocket.Conn)
 
 func Socketing(w http.ResponseWriter, r *http.Request) {
 	socket, err := wsUpgrader.Upgrade(w, r, nil)
-	defer socket.Close()
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+	defer socket.Close()
 
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
 	if err != nil {
@@ -31,6 +32,31 @@ func Socketing(w http.ResponseWriter, r *http.Request) {
 		socket.Close()
 		return
 	}
+
+	token := r.Header.Get("Authorization")
+	if token == "" {
+		socket.WriteMessage(5, []byte("You need to provide a valid authentication token"))
+	}
+
+	/* Auth here */
+	req, _ := http.NewRequest("HEAD", "http://api.zemus.info:80/auth?id="+strconv.Itoa(id), nil)
+	req.Header.Add("Authorization", token)
+	client := &http.Client{}
+	res, err := client.Do(req)
+	if err != nil  {
+		log.Println("err at auth request :\n", err)
+		socket.WriteMessage(5, []byte("An unknown error happened during authentication"))
+		return
+	}
+	if res.StatusCode == 401 {
+		socket.WriteMessage(5, []byte("The authentication failed"))
+		return
+	}
+	if res.StatusCode != 204 {
+		socket.WriteMessage(5, []byte("An unknown error happened during authentication"))
+		return
+	}
+	/**/
 
 	activeSockets[id] = socket
 	defer delete(activeSockets, id)
