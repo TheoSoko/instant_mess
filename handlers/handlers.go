@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -28,35 +29,41 @@ func Socketing(w http.ResponseWriter, r *http.Request) {
 
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
 	if err != nil {
-		socket.WriteMessage(5, []byte("You need to provide and integer value ID as a query parameter"))
-		socket.Close()
+		socket.WriteMessage(1, []byte("You need to provide and integer value ID as a query parameter"))
+		socket.WriteMessage(8, []byte{0})
 		return
 	}
 
 	token := r.Header.Get("Authorization")
 	if token == "" {
-		socket.WriteMessage(5, []byte("You need to provide a valid authentication token"))
+		socket.WriteMessage(1, []byte("You need to provide a valid authentication token"))
+		socket.WriteMessage(8, []byte{0})
+		return
 	}
 
 	/* Auth here */
-	req, _ := http.NewRequest("HEAD", "http://api.zemus.info:80/auth?id="+strconv.Itoa(id), nil)
+	req, _ := http.NewRequest("GET", "http://localhost:8080/auth?id="+strconv.Itoa(id), nil)
 	req.Header.Add("Authorization", token)
 	client := &http.Client{}
 	res, err := client.Do(req)
-	if err != nil  {
-		log.Println("err at auth request :\n", err)
-		socket.WriteMessage(5, []byte("An unknown error happened during authentication"))
+	if err != nil {
+		socket.WriteMessage(1, []byte("An unknown error happened during authentication"))
+		socket.WriteMessage(8, []byte{0})
 		return
 	}
 	if res.StatusCode == 401 {
-		socket.WriteMessage(5, []byte("The authentication failed"))
+		defer res.Body.Close()
+		b, _ := io.ReadAll(res.Body)
+		socket.WriteMessage(1, []byte("The authentication failed\n"+string(b)))
+		socket.WriteMessage(8, []byte{0})
 		return
 	}
 	if res.StatusCode != 204 {
-		socket.WriteMessage(5, []byte("An unknown error happened during authentication"))
+		log.Println("status code :", res.StatusCode)
+		socket.WriteMessage(1, []byte("An unknown error happened during authentication. Status from auth server :"+fmt.Sprint(res.StatusCode)))
+		socket.WriteMessage(8, []byte{0})
 		return
 	}
-	/**/
 
 	activeSockets[id] = socket
 	defer delete(activeSockets, id)
