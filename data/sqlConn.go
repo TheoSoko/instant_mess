@@ -3,7 +3,6 @@ package data
 import (
 	"database/sql"
 	"fmt"
-	"log"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -25,12 +24,12 @@ func SqlConn() {
 
 	db, err = sql.Open("mysql", mysqlConf.FormatDSN())
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
 	pingErr := db.Ping()
 	if pingErr != nil {
-		log.Fatal(pingErr)
+		panic(err)
 	}
 
 	fmt.Println("Connected to db")

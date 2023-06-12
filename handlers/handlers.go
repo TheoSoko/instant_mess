@@ -42,7 +42,7 @@ func Socketing(w http.ResponseWriter, r *http.Request) {
 	}
 
 	/* Auth here */
-	req, _ := http.NewRequest("GET", "http://localhost:8080/auth?id="+strconv.Itoa(id), nil)
+	req, _ := http.NewRequest("GET", "http://api.zemus.info/auth?id="+strconv.Itoa(id), nil)
 	req.Header.Add("Authorization", token)
 	client := &http.Client{}
 	res, err := client.Do(req)
@@ -74,7 +74,6 @@ func Socketing(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("erreur sur la lecture d'un message, ou fermeture du ws:", err)
 			return
 		}
-		//fmt.Println("Message du client:", p)
 		returnMessage := []byte(fmt.Sprint("We received your message ! It's : \"", string(p), "\""))
 		socket.WriteMessage(1, returnMessage)
 	}

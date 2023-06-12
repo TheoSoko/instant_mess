@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	address := "127.0.0.1"
+	address := "0.0.0.0"
 	port := "4000"
 	data.SqlConn()
 
