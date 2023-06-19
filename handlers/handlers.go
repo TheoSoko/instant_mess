@@ -115,22 +115,19 @@ func SendMessage(w http.ResponseWriter, r *http.Request) {
 	// Message has been sent.
 	w.WriteHeader(204)
 
-	friendSocket, ok := activeSockets[intFriendId]
-
-	if !ok {
-		// ** Send push notification if not connected.
-		return
+	friendSocket, exists := activeSockets[intFriendId]
+	if exists {
+		// ** We write to the socket if friend is connected.
+		message := fmt.Sprint("Hey, your friend with id ", id,
+			" just successfully sent a message through a websocket : \n",
+			payload.Message,
+		)
+		err = friendSocket.WriteMessage(1, []byte(message))
+		if err == nil {
+			return
+		}
 	}
 
-	// ** We write to the socket if friend is connected.
-	message := fmt.Sprint("Hey, your friend with id ",
-		id,
-		" just successfully sent a message through a websocket : \n",
-		payload.Message,
-	)
-	err = friendSocket.WriteMessage(1, []byte(message))
-	if err != nil {
-		// ** Send push notification if websocket fails.
-		return
-	}
+	// (*-*) Send push notification if no active websocket for friend, or message failed.
+	return
 }
