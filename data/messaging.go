@@ -3,6 +3,7 @@ package data
 import (
 	"database/sql"
 	"fmt"
+	"log"
 )
 
 type User struct {
@@ -11,22 +12,27 @@ type User struct {
 	Friends   map[int]bool `json:"friends"`
 }
 
-func GetUser(id int) (User, error) {
+func GetUser(id string) (User, error) {
 	var user User
+
+	if db == nil {
+		fmt.Println("db == nil")
+		return user, nil
+	}
 
 	row := db.QueryRow("SELECT `firstname`, `lastname` FROM users WHERE id = ?", id)
 	if err := row.Scan(&user.Firstname, &user.Lastname); err != nil {
 		if err == sql.ErrNoRows {
 			return user, fmt.Errorf("no_user")
 		}
-		fmt.Println("error at GetUser", id, err)
+		log.Println("error at GetUser", id, err)
 		return user, err
 	}
 
 	return user, nil
 }
 
-func PostMessage(senderId int, receiverId int, message string) error {
+func PostMessage(senderId string, receiverId string, message string) error {
 	_, err := db.Exec(
 		"INSERT INTO `messages` (user_sender_id, user_receiver_id, content) VALUES (?, ?, ?)",
 		senderId, receiverId, message)

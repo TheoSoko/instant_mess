@@ -3,6 +3,9 @@ package data
 import (
 	"database/sql"
 	"fmt"
+	"log"
+
+	"os"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -10,27 +13,35 @@ import (
 // Global db struct
 var db *sql.DB
 
-var mysqlConf = mysql.Config{
-	User:                 "root",
-	Passwd:               "",
-	Net:                  "tcp",
-	Addr:                 "127.0.0.1:3306",
-	DBName:               "zemus_api",
-	AllowNativePasswords: true,
-}
-
-func SqlConn() {
+func SqlConn() error {
 	var err error
+
+	var mysqlConf = mysql.Config{
+		User:                 os.Getenv("DB_USER"),
+		Passwd:               os.Getenv("DB_PASSWORD"),
+		Net:                  os.Getenv("DB_NETWORK"),
+		Addr:                 os.Getenv("DB_ADDRESS"),
+		DBName:               os.Getenv("DB_NAME"),
+		AllowNativePasswords: true,
+	}
 
 	db, err = sql.Open("mysql", mysqlConf.FormatDSN())
 	if err != nil {
-		panic(err)
+		log.Println("Erreur de co à la bdd")
+		return err
 	}
 
-	pingErr := db.Ping()
-	if pingErr != nil {
-		panic(err)
+	err = db.Ping()
+	if err != nil {
+		log.Println("Erreur de ping à la bdd")
+		return err
 	}
 
 	fmt.Println("Connected to db")
+
+	return nil
+}
+
+func WhatIsdb() {
+	fmt.Println("whatIsdb : ", db)
 }

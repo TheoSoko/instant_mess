@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -19,11 +18,12 @@ var wsUpgrader = websocket.Upgrader{
 }
 var activeSockets = make(map[int]*websocket.Conn)
 
+/* (*-*) */
+
 func Socketing(w http.ResponseWriter, r *http.Request) {
 	socket, err := wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
-		fmt.Println(err)
-		return
+		log.Fatal(err)
 	}
 	defer socket.Close()
 
@@ -41,27 +41,9 @@ func Socketing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	/* Auth here */
-	req, _ := http.NewRequest("GET", "http://api.zemus.info/auth?id="+strconv.Itoa(id), nil)
-	req.Header.Add("Authorization", token)
-	client := &http.Client{}
-	res, err := client.Do(req)
+	err = authFromSocket(token, id, socket)
 	if err != nil {
-		socket.WriteMessage(1, []byte("An unknown error happened during authentication"))
-		socket.WriteMessage(8, []byte{0})
-		return
-	}
-	if res.StatusCode == 401 {
-		defer res.Body.Close()
-		b, _ := io.ReadAll(res.Body)
-		socket.WriteMessage(1, []byte("The authentication failed\n"+string(b)))
-		socket.WriteMessage(8, []byte{0})
-		return
-	}
-	if res.StatusCode != 204 {
-		log.Println("status code :", res.StatusCode)
-		socket.WriteMessage(1, []byte("An unknown error happened during authentication. Status from auth server :"+fmt.Sprint(res.StatusCode)))
-		socket.WriteMessage(8, []byte{0})
+		// authFromSocket deals with socket response
 		return
 	}
 
@@ -72,8 +54,8 @@ func Socketing(w http.ResponseWriter, r *http.Request) {
 		_, p, err := socket.ReadMessage()
 		if err != nil {
 			fmt.Println("erreur sur la lecture d'un message, ou fermeture du ws:", err)
-			return
 		}
+		//fmt.Println("Message du client:", p)
 		returnMessage := []byte(fmt.Sprint("We received your message ! It's : \"", string(p), "\""))
 		socket.WriteMessage(1, returnMessage)
 	}
@@ -83,7 +65,7 @@ func SendMessage(w http.ResponseWriter, r *http.Request) {
 	id, _ := mux.Vars(r)["id"]
 	friendId, _ := mux.Vars(r)["friendId"]
 
-	intId, err := strconv.Atoi(id)
+	_, err := strconv.Atoi(id)
 	intFriendId, err2 := strconv.Atoi(friendId)
 	if err != nil || err2 != nil {
 		w.WriteHeader(400)
@@ -91,9 +73,22 @@ func SendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = data.GetUser(intFriendId)
+	token := r.Header.Get("Authorization")
+	if token == "" {
+		w.WriteHeader(401)
+		w.Write([]byte("You need to provide a bearer authorization token"))
+		return
+	}
+
+	err = authFromMess(token, id, w)
 	if err != nil {
-		if err == fmt.Errorf("no_user") {
+		// authFromMess deals with http response
+		return
+	}
+
+	_, err = data.GetUser(friendId)
+	if err != nil {
+		if err.Error() == "no_user" {
 			w.WriteHeader(404)
 			w.Write([]byte("No user is associated with that id"))
 			return
@@ -112,7 +107,7 @@ func SendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// ** Send the message to db
-	err = data.PostMessage(intId, intFriendId, payload.Message)
+	err = data.PostMessage(id, friendId, payload.Message)
 	if err != nil {
 		w.WriteHeader(500)
 	}
@@ -121,6 +116,7 @@ func SendMessage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(204)
 
 	friendSocket, ok := activeSockets[intFriendId]
+
 	if !ok {
 		// ** Send push notification if not connected.
 		return
@@ -128,7 +124,7 @@ func SendMessage(w http.ResponseWriter, r *http.Request) {
 
 	// ** We write to the socket if friend is connected.
 	message := fmt.Sprint("Hey, your friend with id ",
-		intId,
+		id,
 		" just successfully sent a message through a websocket : \n",
 		payload.Message,
 	)
