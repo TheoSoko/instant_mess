@@ -31,7 +31,7 @@ func main() {
 	r.HandleFunc("/users/{id}/friends/{friendId}/message", handlers.SendMessage).Methods("POST")
 
 	log.Println("Listening on", os.Getenv("IP") + ": " + os.Getenv("PORT"))
-	err = http.ListenAndServe(os.Getenv("IP") + ": " + os.Getenv("PORT"), r)
+	err = http.ListenAndServe(os.Getenv("IP") + ":" + os.Getenv("PORT"), r)
 	if err != nil {
 		panic(err)
 	}
