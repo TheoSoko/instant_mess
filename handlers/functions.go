@@ -17,8 +17,6 @@ func authFromSocket(token string, id int, socket *websocket.Conn) error {
 	port := os.Getenv("AUTH_PORT")
 	idStr := strconv.Itoa(id)
 
-	log.Println("passed authFromSocket/idStr etc.")
-
 	req, err := http.NewRequest("GET", protocol+"://"+ip+":"+port+"/auth?id="+idStr, nil)
 	if err != nil {
 		log.Fatal(err)
@@ -26,13 +24,7 @@ func authFromSocket(token string, id int, socket *websocket.Conn) error {
 	req.Header.Add("Authorization", token)
 	client := &http.Client{}
 
-	log.Println("passed client := &http.Client{}")
-
-	log.Println("passed authFromSocket/ NewRequest")
-
 	res, err := client.Do(req)
-
-	log.Println("passed authFromSocket/ client.Do")
 
 	if err != nil {
 		socket.WriteMessage(1, []byte("An unknown error happened during authentication"))
@@ -60,7 +52,7 @@ func authFromMess(token string, id string, w http.ResponseWriter) error {
 	ip := os.Getenv("AUTH_IPV6")
 	port := os.Getenv("AUTH_PORT")
 
-	req, err := http.NewRequest("GET", protocol+"://"+ip+":"+port+"/auth?id="+id, nil)
+	req, _ := http.NewRequest("GET", protocol+"://"+ip+":"+port+"/auth?id="+id, nil)
 
 	req.Header.Add("Authorization", token)
 	client := &http.Client{}
