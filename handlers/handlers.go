@@ -131,3 +131,13 @@ func SendMessage(w http.ResponseWriter, r *http.Request) {
 	// (*-*) Send push notification if no active websocket for friend, or message failed.
 	return
 }
+
+
+func Hello (w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(200)
+	w.Write([]byte("Ceci est le microservice de messagerie instantanée.\n" +
+		"Allez à /ws pour ouvrir une connexion websocket, ou à : \n" +
+		"\"POST /users/{id}/friends/{friendId}/message\" pour envoyer un message."))
+	return
+}
+
