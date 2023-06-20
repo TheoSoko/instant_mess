@@ -9,14 +9,21 @@ import (
 
 	"os"
 
+	"path/filepath"
+	"runtime"
+
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
 
 func main() {
 	var err error
+	var (
+		_, b, _, _ = runtime.Caller(0)
+		basepath   = filepath.Dir(b)
+	)
 
-	err = godotenv.Load("./env/.env")
+	err = godotenv.Load(basepath + "/env/.env")
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -54,6 +54,7 @@ func Socketing(w http.ResponseWriter, r *http.Request) {
 		_, p, err := socket.ReadMessage()
 		if err != nil {
 			fmt.Println("erreur sur la lecture d'un message, ou fermeture du ws:", err)
+			return
 		}
 		//fmt.Println("Message du client:", p)
 		returnMessage := []byte(fmt.Sprint("We received your message ! It's : \"", string(p), "\""))
