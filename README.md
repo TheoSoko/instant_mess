@@ -49,11 +49,11 @@ Le fichier de logs, nommé "logs.out", est situé à la racine du projet.
 ### Fonctionnement
 1. Quand un utilisateur ouvre l'application, il est connecté à une websocket ```GET /ws```, le service vérifie ensuite la validité du token d'authentification envoyé, en faisant une requête à l'API principale. 
 
-2) Si l'utilisateur est authentifié, la websocket est ajoutée à une liste contenant toutes les connexions actives.
+2) La websocket est ajoutée à une **liste** contenant toutes les **connexions actives**.
 
 3. Quand un utilisateur envoie un message à un ami, celui-ci est écrit dans la base de données (à condition d'une authentification valide).
 
-4) Puis le programme cherche si le destinataire a actuellement une connexion ouverte afin d'y envoyer le message en temps réel.
+4) Puis le programme cherche si le destinataire a actuellement une **connexion active** afin d'y envoyer le message en temps réel.
 
 5. Si une connexion liée à l'identifiant du destinaire n'est pas trouvée, une   "notification push" sera envoyée. (Pas encore mise en place)
 
