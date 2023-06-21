@@ -23,6 +23,9 @@ func main() {
 		basepath   = filepath.Dir(b)
 	)
 
+	log.Println("file: ", b)
+	log.Println("Directory: ", basepath)
+
 	err = godotenv.Load(basepath + "/env/.env")
 	if err != nil {
 		log.Fatal(err)
