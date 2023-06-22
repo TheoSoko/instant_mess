@@ -32,6 +32,8 @@ Le service tourne sur le port **4000** d'une "instance" (un serveur virtuel) OVH
 
 Le service est relancé à chaque fois que le serveur l'est, grace à **crontab** et **nohup**.
 
+Le projet est situé dans ```/srv/zemus-messaging``` sur le serveur.
+
 Le fichier de logs, nommé "logs.out", est situé à la racine du projet. 
 
 **Pour compiler le projet :**
