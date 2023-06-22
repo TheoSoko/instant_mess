@@ -27,6 +27,7 @@ func main() {
 	}
 
 	r := mux.NewRouter()
+	r.HandleFunc("/", handlers.Hello)
 	r.HandleFunc("/ws", handlers.Socketing)
 	r.HandleFunc("/users/{id}/friends/{friendId}/message", handlers.SendMessage).Methods("POST")
 
