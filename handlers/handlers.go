@@ -61,9 +61,8 @@ func Socketing(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		sMutex.Lock()
 
-		if activeSockets[id] != nil {
-			activeSockets[id].Close()
-			return
+		if as := activeSockets[id]; as != nil {
+			as.Close()
 		}
 		delete(activeSockets, id)
 
