@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 
 	"github.com/TheoSoko/instant_mess/data"
 	"github.com/gorilla/mux"
@@ -17,6 +17,11 @@ var wsUpgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 var activeSockets = make(map[int]*websocket.Conn)
+var sMutex sync.Mutex
+
+type Payload struct {
+	Message string `json:"message"`
+}
 
 /* (*-*) */
 
@@ -43,23 +48,30 @@ func Socketing(w http.ResponseWriter, r *http.Request) {
 
 	err = authFromSocket(token, id, socket)
 	if err != nil {
-		// authFromSocket deals with socket response
+		// authFromSocket deals with socket response messages
+		socket.WriteMessage(8, []byte{0})
+		socket.Close()
 		return
 	}
 
+	sMutex.Lock()
 	activeSockets[id] = socket
-	defer delete(activeSockets, id)
+	sMutex.Unlock()
 
-	for {
-		_, p, err := socket.ReadMessage()
-		if err != nil {
-			fmt.Println("erreur sur la lecture d'un message, ou fermeture du ws:", err)
+	defer func() {
+		sMutex.Lock()
+
+		if activeSockets[id] != nil {
+			activeSockets[id].Close()
 			return
 		}
-		//fmt.Println("Message du client:", p)
-		returnMessage := []byte(fmt.Sprint("We received your message ! It's : \"", string(p), "\""))
-		socket.WriteMessage(1, returnMessage)
-	}
+		delete(activeSockets, id)
+
+		sMutex.Unlock()
+	}()
+
+	// For testing
+	readFromSocket(socket)
 }
 
 func SendMessage(w http.ResponseWriter, r *http.Request) {
@@ -98,16 +110,14 @@ func SendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var payload struct {
-		Message string `json:"message"`
-	}
+	var payload Payload
 	err = json.NewDecoder(r.Body).Decode(&payload)
 	if err != nil {
 		w.WriteHeader(400)
 		w.Write([]byte("A problem occured with the payload"))
 	}
 
-	// ** Send the message to db
+	// Send message to db
 	err = data.PostMessage(id, friendId, payload.Message)
 	if err != nil {
 		w.WriteHeader(500)
@@ -116,20 +126,10 @@ func SendMessage(w http.ResponseWriter, r *http.Request) {
 	// Message has been sent.
 	w.WriteHeader(204)
 
-	friendSocket, exists := activeSockets[intFriendId]
-	if exists {
-		// ** We write to the socket if friend is connected.
-		message := fmt.Sprint("Hey, your friend with id ", id,
-			" just successfully sent a message through a websocket : \n",
-			payload.Message,
-		)
-		err = friendSocket.WriteMessage(1, []byte(message))
-		if err == nil {
-			return
-		}
+	if err := writeToSocket(id, intFriendId, payload); err != nil {
+		// (*-*) Send push notification if no active websocket for friend, or message failed.
 	}
 
-	// (*-*) Send push notification if no active websocket for friend, or message failed.
 	return
 }
 
