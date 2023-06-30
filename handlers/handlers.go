@@ -2,12 +2,14 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 	"sync"
 
 	"github.com/TheoSoko/instant_mess/data"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
@@ -16,7 +18,7 @@ var wsUpgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 }
-var activeSockets = make(map[int]*websocket.Conn)
+var activeSockets = make(map[string]*websocket.Conn)
 var sMutex sync.Mutex
 
 type Payload struct {
@@ -32,7 +34,7 @@ func Socketing(w http.ResponseWriter, r *http.Request) {
 	}
 	defer socket.Close()
 
-	id, err := strconv.Atoi(r.URL.Query().Get("id"))
+	userId, err := strconv.Atoi(r.URL.Query().Get("id"))
 	if err != nil {
 		socket.WriteMessage(1, []byte("You need to provide and integer value ID as a query parameter"))
 		socket.WriteMessage(8, []byte{0})
@@ -46,7 +48,7 @@ func Socketing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = authFromSocket(token, id, socket)
+	err = authFromSocket(token, userId, socket)
 	if err != nil {
 		// authFromSocket deals with socket response messages
 		socket.WriteMessage(8, []byte{0})
@@ -54,17 +56,19 @@ func Socketing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	supplementaryID := uuid.New().String()
+	connID := fmt.Sprint(userId) + "-" + supplementaryID
 	sMutex.Lock()
-	activeSockets[id] = socket
+	activeSockets[connID] = socket
 	sMutex.Unlock()
 
 	defer func() {
 		sMutex.Lock()
 
-		if as := activeSockets[id]; as != nil {
+		if as := activeSockets[connID]; as != nil {
 			as.Close()
 		}
-		delete(activeSockets, id)
+		delete(activeSockets, connID)
 
 		sMutex.Unlock()
 	}()
