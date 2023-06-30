@@ -28,33 +28,40 @@ type Payload struct {
 /* (*-*) */
 
 func Socketing(w http.ResponseWriter, r *http.Request) {
-	socket, err := wsUpgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer socket.Close()
+	var err error
 
 	userId, err := strconv.Atoi(r.URL.Query().Get("id"))
 	if err != nil {
-		socket.WriteMessage(1, []byte("You need to provide and integer value ID as a query parameter"))
-		socket.WriteMessage(8, []byte{0})
+		w.WriteHeader(400)
+		w.Write([]byte("You need to provide and integer value ID as a query parameter"))
 		return
 	}
 
-	token := r.Header.Get("Authorization")
-	if token == "" {
-		socket.WriteMessage(1, []byte("You need to provide a valid authentication token"))
-		socket.WriteMessage(8, []byte{0})
-		return
-	}
+	// DISABLING AUTH FOR TESTING
+	/*
+		token := r.Header.Get("Authorization")
+		if token == "" {
+			w.WriteHeader(401)
+			w.Write([]byte("You need to provide a valid authentication token"))
+			return
+		}
 
-	err = authFromSocket(token, userId, socket)
+		err = auth(token, strconv.Itoa(userId), w)
+		if err != nil {
+			// auth deals with http response messages
+			w.WriteHeader(401)
+			w.Write([]byte("You need to provide a valid authentication token"))
+			return
+		}
+	*/
+
+	socket, err := wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
-		// authFromSocket deals with socket response messages
-		socket.WriteMessage(8, []byte{0})
-		socket.Close()
+		log.Println(err)
 		return
 	}
+	defer socket.Close()
+
 
 	supplementaryID := uuid.New().String()
 	connID := fmt.Sprint(userId) + "-" + supplementaryID
@@ -74,7 +81,8 @@ func Socketing(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// For testing
-	readFromSocket(socket)
+	err = readFromSocket(socket)
+	return
 }
 
 func SendMessage(w http.ResponseWriter, r *http.Request) {
@@ -96,11 +104,14 @@ func SendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = authFromMess(token, id, w)
-	if err != nil {
-		// authFromMess deals with http response
-		return
-	}
+	// DISABLING AUTH FOR TESTING
+		/*
+			err = auth(token, id, w)
+			if err != nil {
+				// auth deals with http response
+				return
+			}
+		*/
 
 	_, err = data.GetUser(friendId)
 	if err != nil {

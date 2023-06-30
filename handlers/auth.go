@@ -15,9 +15,9 @@ func authFromSocket(token string, id int, socket *websocket.Conn) error {
 	protocol := os.Getenv("AUTH_PROTOCOL")
 	ip := os.Getenv("AUTH_IPV6")
 	port := os.Getenv("AUTH_PORT")
-	idStr := strconv.Itoa(id)
+	strId := strconv.Itoa(id)
 
-	req, err := http.NewRequest("GET", protocol+"://"+ip+":"+port+"/auth?id="+idStr, nil)
+	req, err := http.NewRequest("GET", protocol+"://"+ip+":"+port+"/auth?id="+strId, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func authFromSocket(token string, id int, socket *websocket.Conn) error {
 	return nil
 }
 
-func authFromMess(token string, id string, w http.ResponseWriter) error {
+func auth(token string, id string, w http.ResponseWriter) error {
 	protocol := os.Getenv("AUTH_PROTOCOL")
 	ip := os.Getenv("AUTH_IPV6")
 	port := os.Getenv("AUTH_PORT")
@@ -63,9 +63,10 @@ func authFromMess(token string, id string, w http.ResponseWriter) error {
 		return err
 	}
 	if res.StatusCode == 401 {
+		//defer res.Body.Close()
+		//b, _ := io.ReadAll(res.Body)
 		w.WriteHeader(401)
 		w.Write([]byte("The authentication failed"))
-		log.Println("token: ", token)
 		return fmt.Errorf("401")
 	}
 	if res.StatusCode != 204 {

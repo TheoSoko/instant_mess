@@ -28,18 +28,19 @@ func writeToSocket(id string, friendId int, payload Payload) error {
 	return fmt.Errorf("no_conn")
 }
 
-func readFromSocket(socket *websocket.Conn) {
+func readFromSocket(socket *websocket.Conn) error {
 	for {
-		// THIS IS FOR TESTING, the socket won't be accessed from here, so no conflict with goroutines.
-		_, p, err := socket.ReadMessage()
+		msType, p, err := socket.ReadMessage()
+		if msType == -1 {
+			return fmt.Errorf("closed_conn")
+		}
 		if err != nil {
 			fmt.Println("erreur sur la lecture d'un message, ou fermeture du ws:", err)
-			return
+			return err
 		}
 		returnMessage := []byte(fmt.Sprint("We received your message ! It's : \"", string(p), "\""))
 		socket.WriteMessage(1, returnMessage)
 	}
-
 }
 
 func findSockets(friendId int) []*websocket.Conn {
